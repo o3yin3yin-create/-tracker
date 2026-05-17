@@ -6,6 +6,7 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
+      injectRegister: 'inline', // إجبار المتصفح على تسجيل السيرفس وركر فوراً جوه الـ HTML
       registerType: 'autoUpdate',
       includeAssets: ['favicon.png', 'icon.png'],
       manifest: {
@@ -26,8 +27,8 @@ export default defineConfig({
         ]
       },
       workbox: {
-        // الاستراتيجية السحرية: يخزن كل الملفات كاش عشان يفتح أوفلاين فورا
-        globPatterns: ['**/*.{js,css,html,ico,png,svg}']
+        globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+        cleanupOutdatedCaches: true // بيمسح الكاش القديم المهيس عشان يسحب الجديد فورا
       }
     })
   ]
