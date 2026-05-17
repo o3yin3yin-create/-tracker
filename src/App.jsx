@@ -29,6 +29,23 @@ function useAnimatedScore(targetValue) {
 // Generate unique IDs
 const generateId = () => Math.random().toString(36).substr(2, 9);
 
+// --- Custom Rounded & Faded Cursor for the Chart ---
+const CustomCursor = (props) => {
+  const { x, y, width, height } = props;
+  return (
+    <rect
+      x={x - 4}
+      y={y}
+      width={width + 8}
+      height={height}
+      rx={16} 
+      ry={16}
+      fill="url(#cursorGradient)"
+      className="transition-all duration-150"
+    />
+  );
+};
+
 function App() {
   // --- Force Status Bar Color on Mobile ---
   useEffect(() => {
@@ -41,9 +58,9 @@ function App() {
     metaThemeColor.content = "#000000";
   }, []);
 
-  // --- States (v3 for new data structure) ---
+  // --- States (v4) ---
   const [habits, setHabits] = useState(() => {
-    const saved = localStorage.getItem('daybase_habits_v3');
+    const saved = localStorage.getItem('daybase_habits_v4');
     return saved ? JSON.parse(saved) : [
       { id: '1', name: 'Workout', type: 'single', subItems: [] },
       { id: '2', name: 'Prayers', type: 'multi', subItems: ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'] }
@@ -51,21 +68,21 @@ function App() {
   });
 
   const [dailyData, setDailyData] = useState(() => {
-    const saved = localStorage.getItem('daybase_dailyData_v3');
+    const saved = localStorage.getItem('daybase_dailyData_v4');
     return saved ? JSON.parse(saved) : {};
   });
 
   const [sleepData, setSleepData] = useState(() => {
-    const saved = localStorage.getItem('daybase_sleepData_v3');
+    const saved = localStorage.getItem('daybase_sleepData_v4');
     return saved ? JSON.parse(saved) : {};
   });
 
   const [mission, setMission] = useState(() => {
-    return localStorage.getItem('daybase_mission_v3') || "";
+    return localStorage.getItem('daybase_mission_v4') || "";
   });
 
   const [themeColor, setThemeColor] = useState(() => {
-    return localStorage.getItem('daybase_themeColor') || '#FF9F0A';
+    return localStorage.getItem('daybase_themeColor_v4') || '#FF9F0A';
   });
 
   const [expandedHabits, setExpandedHabits] = useState([]);
@@ -74,8 +91,18 @@ function App() {
   const chartRef = useRef(null);
   const topRef = useRef(null);
 
-  // --- Date Logic ---
-  const [baseDate, setBaseDate] = useState(new Date());
+  // --- Exact Real-Time Date Initialization ---
+  const [baseDate, setBaseDate] = useState(() => new Date());
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = new Date();
+      if (now.getDate() !== baseDate.getDate()) {
+        setBaseDate(now);
+      }
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [baseDate]);
 
   const dayName = baseDate.toLocaleString('en-US', { weekday: 'long' }); 
   const dayNum = String(baseDate.getDate()).padStart(2, '0'); 
@@ -130,11 +157,11 @@ function App() {
   }, [activeDateStr, sleepData]);
 
   // --- Effects ---
-  useEffect(() => { localStorage.setItem('daybase_habits_v3', JSON.stringify(habits)); }, [habits]);
-  useEffect(() => { localStorage.setItem('daybase_dailyData_v3', JSON.stringify(dailyData)); }, [dailyData]);
-  useEffect(() => { localStorage.setItem('daybase_sleepData_v3', JSON.stringify(sleepData)); }, [sleepData]);
-  useEffect(() => { localStorage.setItem('daybase_mission_v3', mission); }, [mission]);
-  useEffect(() => { localStorage.setItem('daybase_themeColor', themeColor); }, [themeColor]);
+  useEffect(() => { localStorage.setItem('daybase_habits_v4', JSON.stringify(habits)); }, [habits]);
+  useEffect(() => { localStorage.setItem('daybase_dailyData_v4', JSON.stringify(dailyData)); }, [dailyData]);
+  useEffect(() => { localStorage.setItem('daybase_sleepData_v4', JSON.stringify(sleepData)); }, [sleepData]);
+  useEffect(() => { localStorage.setItem('daybase_mission_v4', mission); }, [mission]);
+  useEffect(() => { localStorage.setItem('daybase_themeColor_v4', themeColor); }, [themeColor]);
 
   // --- Functions ---
   const toggleCheck = (habitId, subItem = null) => {
@@ -213,7 +240,7 @@ function App() {
   const animatedScore = useAnimatedScore(targetScore);
   const scoreDisplay = animatedScore % 1 === 0 ? animatedScore.toFixed(0) : animatedScore.toFixed(1);
 
-  // --- Sleep Chart Data Prep ---
+  // --- Sleep Chart Data Prep (Fixed to accurately label today vs history) ---
   const getChartData = () => {
     const data = [];
     const dayNames = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'];
@@ -242,8 +269,11 @@ function App() {
       });
       const dayScore = dayTotal > 0 ? (dayComp / dayTotal) * 100 : 0;
 
+      // التصليح هنا: المقارنة بالتاريخ الكامل الفعلي لكل يوم ضد تاريخ النهاردة الحقيقي
+      const isColumnToday = currentStr === realTodayStr;
+
       data.push({
-        name: dayNames[i],
+        name: isColumnToday ? 'TODAY' : dayNames[i],
         sleep: sleepData[currentStr] || 0,
         score: dayScore
       });
@@ -261,6 +291,10 @@ function App() {
             background-color: #000000 !important;
             margin: 0;
             padding: 0;
+            -webkit-tap-highlight-color: transparent;
+          }
+          .recharts-wrapper {
+            outline: none !important;
           }
         `}
       </style>
@@ -291,7 +325,7 @@ function App() {
                       <input type="text" placeholder={`Task ${idx + 1}...`} value={sub} onChange={(e) => updateSubItem(idx, e.target.value)} className="flex-1 bg-black text-white px-4 py-3 rounded-xl outline-none border border-white/10 focus:border-white/30 text-sm" />
                       <button onClick={() => removeSubItem(idx)} className="p-3 bg-red-500/10 text-red-500 rounded-xl hover:bg-red-500/20"><X size={16} /></button>
                     </div>
-                  ))}
+                ))}
                   <button onClick={handleAddSubItem} className="w-full py-3 border border-dashed border-white/20 rounded-xl text-white/50 hover:text-white hover:border-white/40 text-sm font-medium">+ Add Item</button>
                 </div>
               )}
@@ -362,8 +396,16 @@ function App() {
             </label>
           </header>
 
-          {/* Mission Card */}
-          <div className="w-full p-6 flex flex-col mb-8 transition-colors duration-500" style={{ backgroundColor: themeColor, borderRadius: '28px', color: '#000000' }}>
+          {/* Mission Card with Explicit Inline Style Neon Glow */}
+          <div 
+            className="w-full p-6 flex flex-col mb-8 transition-colors duration-500" 
+            style={{ 
+              backgroundColor: themeColor, 
+              borderRadius: '28px', 
+              color: '#000000',
+              boxShadow: `0 0 35px -2px ${themeColor}bb` 
+            }}
+          >
             {mission ? (
               <div className="flex items-center gap-2 mb-2">
                 <Target size={16} strokeWidth={2.5} />
@@ -396,7 +438,9 @@ function App() {
 
             <div className="flex gap-10">
               <div className="flex flex-col">
-                <span className="text-[10px] font-bold tracking-widest opacity-60 uppercase mb-1">Score ({activeDateStr === realTodayStr ? 'Today' : 'Viewed'})</span>
+                <span className="text-[10px] font-bold tracking-widest opacity-60 uppercase mb-1">
+                  Score ({activeDateStr === realTodayStr ? 'Today' : 'Viewed'})
+                </span>
                 <span className="text-4xl font-bold tracking-tighter">{scoreDisplay}<span className="text-2xl font-medium">%</span></span>
               </div>
             </div>
@@ -429,7 +473,8 @@ function App() {
                     backgroundColor: isAllChecked ? themeColor : '#1C1C1E',
                     color: isAllChecked ? '#000000' : '#FFFFFF',
                     aspectRatio: (isMulti && isExpanded) ? 'auto' : '2.5 / 1',
-                    minHeight: (isMulti && isExpanded) ? 'auto' : '0'
+                    minHeight: (isMulti && isExpanded) ? 'auto' : '0',
+                    boxShadow: isAllChecked ? `0 0 20px -3px ${themeColor}aa` : 'none' 
                   }}
                 >
                   <div 
@@ -491,13 +536,30 @@ function App() {
 
             <div className="w-full p-6 bg-[#1C1C1E] rounded-[2rem]">
               <h3 className="text-lg font-medium mb-8">Sleep vs Score</h3>
-              <div className="w-full h-48 mb-6">
+              <div className="w-full h-48 mb-6 relative">
+                
+                <svg style={{ height: 0, width: 0, position: 'absolute' }}>
+                  <defs>
+                    <linearGradient id="cursorGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#2C2C2E" stopOpacity={0.9}/>
+                      <stop offset="100%" stopColor="#2C2C2E" stopOpacity={0.0}/>
+                    </linearGradient>
+                  </defs>
+                </svg>
+
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={sleepChartData} barGap={4}>
                     <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#8E8E93', fontSize: 11, fontWeight: 600 }} dy={10} />
                     <YAxis yAxisId="left" orientation="left" hide domain={[0, 24]} />
                     <YAxis yAxisId="right" orientation="right" hide domain={[0, 100]} />
-                    <Tooltip cursor={{fill: '#2C2C2E'}} contentStyle={{ backgroundColor: '#000000', border: 'none', borderRadius: '12px', color: '#FFFFFF' }} itemStyle={{ color: '#FFFFFF', fontWeight: 600 }} formatter={(value, name) => { if (name === "Sleep") return [`${value} hrs`, "Sleep"]; return [`${value.toFixed(0)}%`, "Score"]; }} />
+                    
+                    <Tooltip 
+                      cursor={<CustomCursor />} 
+                      contentStyle={{ backgroundColor: '#000000', border: 'none', borderRadius: '12px', color: '#FFFFFF' }} 
+                      itemStyle={{ color: '#FFFFFF', fontWeight: 600 }} 
+                      formatter={(value, name) => { if (name === "Sleep") return [`${value} hrs`, "Sleep"]; return [`${value.toFixed(0)}%`, "Score"]; }} 
+                    />
+                    
                     <Bar yAxisId="left" dataKey="sleep" fill="#FFFFFF" radius={[4, 4, 4, 4]} barSize={6} name="Sleep" />
                     <Bar yAxisId="right" dataKey="score" fill={themeColor} radius={[4, 4, 4, 4]} barSize={6} name="Score" />
                   </BarChart>
@@ -512,7 +574,7 @@ function App() {
             </div>
           </div>
 
-          {/* --- CREATOR SIGNATURE (6AFRA INSTAGRAM LINK) --- */}
+          {/* --- CREATOR SIGNATURE --- */}
           <div className="flex justify-center items-center mt-6 mb-8 opacity-40 hover:opacity-100 transition-opacity">
             <span className="text-[9px] font-bold tracking-widest uppercase">
               This tracker crafted in Egypt by <a href="https://www.instagram.com/jj3_xx?igsh=MWVkaGI5ZjNsb3Nreg%3D%3D&utm_source=qr" target="_blank" rel="noopener noreferrer" style={{ color: themeColor }} className="underline decoration-dashed underline-offset-4 font-bold">6afra</a>
