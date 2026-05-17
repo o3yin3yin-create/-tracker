@@ -1,6 +1,8 @@
 import { SlidersHorizontal, Target, Check, Plus, Trash2, Edit2, X, Home, BarChart2, ChevronDown, ChevronUp, ListChecks, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+// سطر الـ Import الجديد للـ PWA فوق خالص
+import { useRegisterSW } from 'virtual:pwa-register/react';
 
 // --- Custom Hook for Animated Score ---
 function useAnimatedScore(targetValue) {
@@ -47,6 +49,9 @@ const CustomCursor = (props) => {
 };
 
 function App() {
+  // تفعيل الـ Service Worker أوتوماتيك أول ما الفانكشن تشتغل هنا
+  useRegisterSW({ immediate: true });
+
   // --- Force Status Bar Color on Mobile ---
   useEffect(() => {
     let metaThemeColor = document.querySelector("meta[name=theme-color]");
@@ -240,7 +245,7 @@ function App() {
   const animatedScore = useAnimatedScore(targetScore);
   const scoreDisplay = animatedScore % 1 === 0 ? animatedScore.toFixed(0) : animatedScore.toFixed(1);
 
-  // --- Sleep Chart Data Prep (Fixed to accurately label today vs history) ---
+  // --- Sleep Chart Data Prep ---
   const getChartData = () => {
     const data = [];
     const dayNames = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'];
@@ -269,7 +274,6 @@ function App() {
       });
       const dayScore = dayTotal > 0 ? (dayComp / dayTotal) * 100 : 0;
 
-      // التصليح هنا: المقارنة بالتاريخ الكامل الفعلي لكل يوم ضد تاريخ النهاردة الحقيقي
       const isColumnToday = currentStr === realTodayStr;
 
       data.push({
