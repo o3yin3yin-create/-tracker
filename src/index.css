@@ -1,0 +1,12 @@
+@import "tailwindcss";
+
+@theme {
+  --color-asphalt: #302F2C;
+  --color-paper: #EFEDE3;
+  --font-scribble: "Reenie Beanie", cursive;
+}
+
+.bg-dotted {
+  background-image: radial-gradient(rgba(48, 47, 44, 0.15) 1.5px, transparent 1.5px);
+  background-size: 24px 24px;
+}
